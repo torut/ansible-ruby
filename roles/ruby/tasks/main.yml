@@ -1,0 +1,35 @@
+- name: install ruby depends packages
+  apt: name={{ item }} state=present
+  items:
+    - libreadline-dev
+
+- name: clone rbenv from github
+  git: repo=https://github.com/sstephenson/rbenv.git dest={{ rbenv_root }}
+
+- name: clone ruby-build for rbenv from github
+  git: repo=https://github.com/sstephenson/ruby-build.git dest={{ rbenv_root }}/plugins/ruby-build
+
+- name: init rbenv script for profile.d
+  blockinfile:
+    dest: /etc/profile.d/rbenv.sh
+    create: yes
+    content: |
+      export RBENV_ROOT="{{ rbenv_root }}"
+      export PATH="{{ rbenv_root }}/bin:$PATH"
+      eval "$(rbenv init -)"
+
+- name: check installed ruby {{ rbenv_ruby_version }}
+  stat: path={{ rbenv_root }}/versions/{{ rbenv_ruby_version }}
+  register: ruby_exists
+
+- name: install ruby
+  command: bash -lc  "rbenv install {{ rbenv_ruby_version }}"
+  when: not ruby_exists.stat.exists
+
+- name: configure global default ruby version
+  command: bash -lc "rbenv global {{ rbenv_ruby_version }}"
+
+- command: bash -lc "rbenv rehash"
+
+- name: install gem bundler
+  command: gem install bundler
